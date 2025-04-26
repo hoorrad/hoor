@@ -1,0 +1,281 @@
+<!DOCTYPE html>
+<html lang="ar">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>لعبة بزل الأشعة</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Cairo:wght@600&display=swap');
+
+        body {
+            font-family: 'Cairo', sans-serif;
+            background-color: #fff3e0;
+            text-align: center;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: flex-start;
+            height: 100vh;
+        }
+
+        h1 {
+            color: #d84315;
+            font-size: 32px;
+            margin-top: 20px;
+        }
+
+        .puzzle-container {
+            display: grid;
+            grid-template-columns: repeat(3, 100px);
+            grid-template-rows: repeat(3, 100px);
+            gap: 5px;
+            margin: 20px auto;
+            justify-content: center;
+            border: 5px solid #ff9800;
+            padding: 10px;
+            background: #fff;
+            max-width: 340px;
+        }
+
+        .piece {
+            width: 100px;
+            height: 100px;
+            background-size: 300px 300px;
+            background-repeat: no-repeat;
+            border: 2px solid #ff6f00;
+            cursor: grab;
+            transition: transform 0.2s ease-in-out;
+        }
+
+        .info-box {
+            margin-top: 20px;
+            padding: 15px;
+            border: 2px solid #ff5722;
+            background-color: #ffccbc;
+            font-size: 18px;
+            color: #333;
+            display: none;
+            max-width: 340px;
+            text-align: center;
+        }
+
+        .btn {
+            margin-top: 15px;
+            padding: 10px 15px;
+            font-size: 16px;
+            cursor: pointer;
+            border: none;
+            border-radius: 5px;
+            background-color: #ff9800;
+            color: white;
+            transition: background-color 0.3s;
+            display: none;
+        }
+
+        .btn:hover {
+            background-color: #e65100;
+        }
+
+        .flash {
+            animation: flashEffect 0.5s ease-in-out 3;
+        }
+
+        @keyframes flashEffect {
+            0%, 100% { background-color: #fff3e0; }
+            50% { background-color: #ffeb3b; }
+        }
+
+        /* تأثير البالونات عند النجاح */
+        .balloon {
+            position: absolute;
+            top: 10px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 30px;
+            color: #ff9800;
+            animation: floatBalloon 2s ease-in-out infinite;
+        }
+
+        @keyframes floatBalloon {
+            0% { top: 10px; }
+            50% { top: 100px; }
+            100% { top: 10px; }
+        }
+
+        /* جعل زر التالي في منتصف الصفحة */
+        .next-container {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            width: 100%;
+            margin-top: 20px;
+        }
+    </style>
+</head>
+<body>
+
+<h1>🔎 لعبة بزل الأشعة</h1>
+<p>رتب الأجزاء لتكشف الصورة والمعلومة المخفية!</p>
+
+<div class="puzzle-container" id="puzzleBoard"></div>
+
+<div class="info-box" id="infoBox">
+    <h2>المعلومة:</h2>
+    <p id="infoText"></p>
+</div>
+
+<!-- وضع الزر داخل حاوية لتنسيق الوسط -->
+<div class="next-container">
+    <button class="btn" id="nextBtn" style="display:none;" onclick="nextPuzzle()">التالي</button>
+</div>
+
+<!-- البالونات ستظهر عند النجاح -->
+<div id="balloonsContainer"></div>
+
+<script>
+    const images = [
+        {
+            url: 'https://prod-images-static.radiopaedia.org/images/53184924/2945667385191d66440188d5436a8a_jumbo.jpeg',  // الصورة الجديدة
+            info: 'الأشعة السينية هي نوع من الطاقة القادرة على المرور عبر الجسم، وتُستخدم لتشخيص الكسور، الأمراض، وأورام الجسم من خلال إنتاج صور داخلية واضحة، وهي من أهم أدوات التشخيص الطبي لأنها تميز بين العظام والأنسجة الطرية بسهولة.',
+            pieces: 9 // 9 قطع
+        },
+        {
+            url: 'https://i.ebayimg.com/images/g/JLQAAOSwYUZc~4bm/s-l1600.jpg',  // صورة جانبية للرأس
+            info: 'العظام تمتص الأشعة السينية أكثر من الدهون وخلايا الجلد بسبب كثافتها العالية واحتوائها على الكالسيوم، لذلك تظهر بلون أبيض أو فاتح في صور الأشعة.',
+            pieces: 9 // 9 قطع
+        },
+        {
+            url: 'https://o.quizlet.com/n-Fyw.K9V1NtW8mVRTJZyg_b.png',  // صورة اليد
+            info: 'يوجد حد أقصى لكمية الأشعة السينية التي يمكن للإنسان التعرض لها سنويًا، وذلك لحمايته من أضرار الإشعاع، ويُقاس هذا الحد بوحدة الميلي سيفرت حسب توصيات المنظمات الصحية.',
+            pieces: 9 // 9 قطع
+        },
+        {
+            url: 'https://th.bing.com/th/id/OIP.OHM9JxdXvWO3Z-3uDlsG-wAAAA?rs=1&pid=ImgDetMain',  // صورة القدم
+            info: 'لحماية نفسك من الأشعة، استخدم دروع الرصاص، ابتعد عن مصدر الأشعة قدر الإمكان، وقلل وقت التعرض للأشعة بقدر المستطاع.',
+            pieces: 9 // 9 قطع
+        },
+        {
+            url: 'https://usercontent2.hubstatic.com/8673617_f520.jpg',  // صورة الصدر
+            info: 'إذا لزم الفحص الإشعاعي، تُبلغ الحامل طبيبها لاتخاذ تدابير مثل تقليل الجرعة أو استخدام واقٍ من الرصاص.',
+            pieces: 9 // 9 قطع
+        }
+    ];
+
+    let currentImageIndex = 0;
+    let board = [];
+    let placedPieces = 0;
+
+    function getRandomIndex(arr) {
+        return Math.floor(Math.random() * arr.length);
+    }
+
+    function shuffleArray(arr) {
+        let shuffledArray = arr.slice();
+        for (let i = shuffledArray.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [shuffledArray[i], shuffledArray[j]] = [shuffledArray[j], shuffledArray[i]];
+        }
+        return shuffledArray;
+    }
+
+    function loadPuzzle(imageIndex) {
+        let selectedImage = images[imageIndex];
+        board = [];
+        placedPieces = 0;
+        let puzzleBoard = document.getElementById('puzzleBoard');
+        puzzleBoard.innerHTML = '';
+
+        // خلط القطع
+        let shuffledIndexes = shuffleArray([...Array(selectedImage.pieces).keys()]);
+
+        for (let i = 0; i < selectedImage.pieces; i++) {
+            let piece = document.createElement('div');
+            piece.classList.add('piece');
+            piece.setAttribute('draggable', 'true');
+            piece.dataset.index = i;
+            piece.style.backgroundImage = `url(${selectedImage.url})`;
+
+            let row = Math.floor(shuffledIndexes[i] / 3);
+            let col = shuffledIndexes[i] % 3;
+            piece.style.backgroundPosition = `${-col * 100}px ${-row * 100}px`;
+
+            piece.ondragstart = function (e) {
+                e.dataTransfer.setData('text', e.target.dataset.index);
+            };
+
+            piece.ondragover = function (e) {
+                e.preventDefault();
+            };
+
+            piece.ondrop = function (e) {
+                e.preventDefault();
+                let draggedIndex = e.dataTransfer.getData('text');
+                let draggedPiece = document.querySelector(`.piece[data-index='${draggedIndex}']`);
+                let droppedPiece = e.target;
+
+                let tempBg = draggedPiece.style.backgroundPosition;
+                draggedPiece.style.backgroundPosition = droppedPiece.style.backgroundPosition;
+                droppedPiece.style.backgroundPosition = tempBg;
+
+                // تحقق من اكتمال الصورة
+                checkPuzzleCompletion();
+            };
+
+            puzzleBoard.appendChild(piece);
+            board.push(piece);
+        }
+
+        document.getElementById('infoText').innerText = selectedImage.info;
+        document.getElementById('infoBox').style.display = 'none';
+        document.getElementById('nextBtn').style.display = 'none';
+        document.getElementById('balloonsContainer').innerHTML = ''; // إخفاء البالونات عند الانتقال للصورة التالية
+    }
+
+    function checkPuzzleCompletion() {
+        placedPieces = 0;
+        board.forEach(piece => {
+            let row = Math.floor(piece.dataset.index / 3);
+            let col = piece.dataset.index % 3;
+            let correctPosition = `${-col * 100}px ${-row * 100}px`;
+
+            if (piece.style.backgroundPosition === correctPosition) {
+                placedPieces++;
+            }
+        });
+
+        if (placedPieces === board.length) {
+            document.getElementById('infoBox').style.display = 'block';
+            document.getElementById('nextBtn').style.display = 'block';
+            document.getElementById('nextBtn').classList.add('flash');
+            new Audio('https://www.soundjay.com/button/beep-07.wav').play(); // صوت عند اكتمال الصورة
+            new Audio('https://youtu.be/Y7wrMOVuH3M').play(); // الصوت الذي طلبته عند الإجابة الصحيحة
+            displayBalloons(); // عرض البالونات
+        }
+    }
+
+    function displayBalloons() {
+        let balloonsContainer = document.getElementById('balloonsContainer');
+        let balloon = document.createElement('div');
+        balloon.classList.add('balloon');
+        balloon.innerText = "🎉🎉🎉 تهانينا! الصورة مكتملة! 🎉🎉🎉";
+        balloonsContainer.appendChild(balloon);
+    }
+
+    function nextPuzzle() {
+        currentImageIndex++;
+        if (currentImageIndex >= images.length) {
+            currentImageIndex = 0;
+        }
+        loadPuzzle(currentImageIndex);
+    }
+
+    window.onload = function () {
+        loadPuzzle(currentImageIndex);
+    }
+</script>
+
+</body>
+</html>
